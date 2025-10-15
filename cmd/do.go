@@ -22,28 +22,39 @@ var doCmd = &cobra.Command{
 				fmt.Println("Failed to parse the argument: ", arg)
 			} else {
 				finishedTasks = append(finishedTasks, id)
-
 			}
 		}
 
 		// Looping to all list task to remove the ones marked by the user
-		tasks, err := db.AllTasks()
+		tasks, err := db.AllTasks(db.TaskBucket)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		//   the keys of the tasks to be removed
+		// Looping through tasks marked as completed
 		for _, finishedTask := range finishedTasks {
 			if finishedTask <= 0 || finishedTask > len(tasks) {
 				fmt.Println("Invalid task number:", finishedTask)
 				continue
 			}
 			task := tasks[finishedTask-1]
-			err := db.DeleteTask(task.Key)
+
+			// Creating the task into the CompletedTasks bucket
+			_, err := db.CreateTask(task.Value, db.CompletedBucket)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// Registering the time of the task
+			err = db.MarkAsCompleted(task.Key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// Deleting task from Pending task bucket
+			err = db.DeleteTask(task.Key)
 			if err != nil {
 				log.Fatal(err)
 			} else {
-				fmt.Printf("Marked \"%d\" as completed.\n", finishedTask)
+				fmt.Printf("Marked \"%s\" as completed.\n", task.Value)
 			}
 		}
 	},

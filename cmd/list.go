@@ -16,14 +16,14 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all of your tasks.",
 	Run: func(cmd *cobra.Command, args []string) {
-		tasks, err := db.AllTasks()
+		tasks, err := db.AllTasks(db.TaskBucket)
 		if err != nil {
 			log.Fatal(err)
 		}
-		
+
 		if len(tasks) == 0 {
 			fmt.Println("You have not tasks to complete!")
-			return 
+			return
 		}
 
 		fmt.Println("You have the following tasks:")

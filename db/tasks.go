@@ -8,7 +8,9 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-var taskBucket = []byte("PendingTasks")
+var TaskBucket = []byte("PendingTasks")
+var CompletedBucket = []byte("CompletedTasks")
+var DateCompletion = []byte("DateCompletion")
 var db *bolt.DB
 
 type Task struct {
@@ -24,16 +26,20 @@ func Init(dbPath string) error {
 		log.Fatal(err)
 	}
 	return db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(taskBucket)
+		_, err := tx.CreateBucketIfNotExists(TaskBucket)
+		_ = err
+		_, err = tx.CreateBucketIfNotExists(DateCompletion)
+		_ = err
+		_, err = tx.CreateBucketIfNotExists(CompletedBucket)
 		return err
 	})
 }
 
-func CreateTask(task string) (int, error) {
+func CreateTask(task string, bucket []byte) (int, error) {
 	var id int
 	err := db.Update(func(tx *bolt.Tx) error {
 		// Accessing the Pending Tasks bucket (table)
-		b := tx.Bucket(taskBucket)
+		b := tx.Bucket(bucket)
 
 		// Creating unique key for the next element
 		id64, _ := b.NextSequence()
@@ -51,11 +57,11 @@ func CreateTask(task string) (int, error) {
 	return id, err
 }
 
-func AllTasks() ([]Task, error) {
+func AllTasks(bucket []byte) ([]Task, error) {
 	var tasks []Task
 
 	err := db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("PendingTasks"))
+		b := tx.Bucket(bucket)
 		c := b.Cursor()
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -74,9 +80,18 @@ func AllTasks() ([]Task, error) {
 
 func DeleteTask(k int) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(taskBucket)
+		b := tx.Bucket(TaskBucket)
 		err := b.Delete(itoB(k))
 		return err
+	})
+}
+
+func MarkAsCompleted(k int) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(DateCompletion)
+		kByte := itoB(k)
+		todayDate := TodaysDate()
+		return b.Put(kByte, []byte(todayDate))
 	})
 }
 
@@ -88,4 +103,9 @@ func itoB(v int) []byte {
 
 func btoI(b []byte) int {
 	return int(binary.BigEndian.Uint64(b))
+}
+
+func TodaysDate() string {
+	today := time.Now()
+	return today.Format("2006-01-02")
 }

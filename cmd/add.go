@@ -18,12 +18,11 @@ var addCmd = &cobra.Command{
 	Short: "Adds a task to the task list.",
 	Run: func(cmd *cobra.Command, args []string) {
 		task := strings.Join(args, " ")
-		_, err := db.CreateTask(task)
+		_, err := db.CreateTask(task, db.TaskBucket)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Printf("Added \"%s\" to your task list.\n", task)
-
 	},
 }
 
